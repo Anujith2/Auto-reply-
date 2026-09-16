@@ -70,8 +70,13 @@ payment_checking_responses = [
 ]
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # മെസ്സേജ് അയച്ച ആളുടെ പേര് എടുക്കുന്നു (ലഭിച്ചില്ലെങ്കിൽ 'Friend' എന്ന് എടുക്കും)
-    user_name = update.message.from_user.first_name if update.message.from_user else "Friend"
+    # അപ്ഡേറ്റിൽ മെസ്സേജോ യൂസറോ ഇല്ലെങ്കിൽ എറർ വരാതിരിക്കാൻ തടയുന്നു
+    if not update.message:
+        return
+
+    user_name = "Friend"
+    if update.message.from_user and update.message.from_user.first_name:
+        user_name = update.message.from_user.first_name
 
     # ഉപയോക്താവ് ഫോട്ടോയാണ് (സ്ക്രീൻഷോട്ട്) അയച്ചതെങ്കിൽ
     if update.message.photo:
@@ -79,11 +84,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(reply_text, parse_mode="Markdown")
         return
 
-    # ടെക്സ്റ്റ് മെസ്സേജ് ആണെങ്കിൽ
-    user_message = update.message.text.lower() if update.message.text else ""
+    # ടെക്സ്റ്റ് മെസ്സേജ് ആണെങ്കിൽ മാത്രം
+    if not update.message.text:
+        return
+
+    user_message = update.message.text.lower()
     print(f"Received message from {user_name}: {user_message}")
     
-    # വെറുതെ Hi അല്ലെങ്കിൽ Hello എന്ന് മാത്രം അയച്ചാൽ (പേര് ചേർത്ത് മറുപടി പോകും)
+    # വെറുതെ Hi അല്ലെങ്കിൽ Hello എന്ന് മാത്രം അയച്ചാൽ
     if user_message in ['hi', 'hello', 'hey', 'hai', 'ഹായ്', 'ഹലോ']:
         reply_text = get_hi_response(user_name)
     
@@ -115,7 +123,7 @@ def main():
     message_handler = MessageHandler((filters.TEXT | filters.PHOTO) & (~filters.COMMAND), handle_message)
     application.add_handler(message_handler)
 
-    print("Advanced Personalised Bot is running on Render...")
+    print("Safe and Advanced Bot is running on Render...")
     application.run_polling()
 
 if __name__ == '__main__':
