@@ -1,23 +1,9 @@
 import os
 import random
-from aiohttp import web
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
 TOKEN = os.getenv("TOKEN")
-PORT = int(os.environ.get("PORT", "10000"))
-
-# --- Render Port Binding Web Server ---
-async def handle_web(request):
-    return web.Response(text="Bot is running and alive!")
-
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get("/", handle_web)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", PORT)
-    await site.start()
 
 # --- 1. MALAYALAM RESPONSES ---
 malayalam_plan_responses = [
@@ -150,17 +136,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(reply_text, parse_mode="Markdown")
 
 def main():
-    import asyncio
-    loop = asyncio.get_event_loop()
-    
-    # Start Render Web Server and Telegram Bot together smoothly
-    loop.run_until_complete(start_web_server())
-
     application = ApplicationBuilder().token(TOKEN).build()
+
     message_handler = MessageHandler((filters.TEXT | filters.PHOTO) & (~filters.COMMAND), handle_message)
     application.add_handler(message_handler)
 
-    print("Port-bound Multilingual Bot is running successfully...")
+    print("Multilingual Bot is running successfully...")
     application.run_polling()
 
 if __name__ == '__main__':
