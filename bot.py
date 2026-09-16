@@ -1,23 +1,9 @@
 import os
 import random
-from aiohttp import web
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
 TOKEN = os.getenv("TOKEN")
-PORT = int(os.environ.get("PORT", "10000"))
-
-# Dummy web server for Render port binding
-async def handle_web(request):
-    return web.Response(text="Multilingual Bot is running smoothly!")
-
-async def run_web_server():
-    app = web.Application()
-    app.router.add_get("/", handle_web)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", PORT)
-    await site.start()
 
 # --- 1. MALAYALAM RESPONSES ---
 malayalam_plan_responses = [
@@ -77,12 +63,12 @@ english_hi = [
 
 # --- 3. HINDI RESPONSES ---
 hindi_responses = [
-    "नमस्ते {name}! यदि आप प्लान या पेमेंट के बारे में जानना चाहते हैं, तो कृपया बताएं।\n\n🔵 **GPay UPI:** `kv048471@okicici`\n🟣 **PhonePe UPI:** `vijayalakshmik8825@ybl`\n\n⚠️ पेमेंट करने के बाद स्क्रीनशॉट यहाँ भेजें।"
+    "नमस्ते {name}! यदि आप प्लान या पेमेंट के बारे में जानना चाहते हैं, तो कृपया बताएं。\n\n🔵 **GPay UPI:** `kv048471@okicici`\n🟣 **PhonePe UPI:** `vijayalakshmik8825@ybl`\n\n⚠️ पेमेंट करने के बाद स्क्रीनशॉट यहाँ भेजें।"
 ]
 
 # --- 4. TELUGU RESPONSES ---
 telugu_responses = [
-    "హలో {name}! ప్లాన్స్ లేదా పేమెంట్ వివరాల గురించి తెలుసుకోవాలంటే అడగండి.\n\n🔵 **GPay UPI:** `kv048471@okicici`\n🟣 **PhonePe UPI:** `vijayalakshmik8825@ybl`\n\n⚠️ పేమెంట్ చేసిన తర్వాత స్క్రీన్ షాట్ ఇక్కడ పంపండి."
+    "హలో {name}! ప్లాన్స్ లేదా పేమెంట్ వివరాల గురించి తెలుసుకోవాలంటే అడగండి。\n\n🔵 **GPay UPI:** `kv048471@okicici`\n🟣 **PhonePe UPI:** `vijayalakshmik8825@ybl`\n\n⚠️ పేమెంట్ చేసిన తర్వాత స్క్రీన్ షాట్ ఇక్కడ పంపండి."
 ]
 
 # --- 5. TAMIL RESPONSES ---
@@ -117,8 +103,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"Received message from {user_name} ({user_message})")
 
     # Language Detection & Matching Logic
-    
-    # Malayalam Detection (Malayalam script or words)
     if any(word in user_message for word in ['malayalam', 'പ്ലാൻ', 'എങ്ങനെ', 'വില', 'അയച്ചു', 'രൂപ', 'rs', '10', '40', '89']) or \
        any(char >= '\u0d00' and char <= '\u0d7f' for char in user_message):
         
@@ -127,22 +111,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             reply_text = random.choice(malayalam_plan_responses)
 
-    # Hindi Detection
-    elif any(word in user_message for word in ['hindi', 'kaise', 'kya', 'price', 'payment', 'नमस्ते', 'план']) or \
+    elif any(word in user_message for word in ['hindi', 'kaise', 'kya', 'price', 'payment', 'नमस्ते']) or \
          any(char >= '\u0900' and char <= '\u097f' for char in user_message):
         reply_text = random.choice(hindi_responses).format(name=user_name)
 
-    # Telugu Detection
     elif any(word in user_message for word in ['telugu', 'ela', 'enti', 'namaskaram']) or \
          any(char >= '\u0c00' and char <= '\u0c7f' for char in user_message):
         reply_text = random.choice(telugu_responses).format(name=user_name)
 
-    # Tamil Detection
     elif any(word in user_message for word in ['tamil', 'epdi', 'vanakkam', 'enna']) or \
          any(char >= '\u0b00' and char <= '\u0b7f' for char in user_message):
         reply_text = random.choice(tamil_responses).format(name=user_name)
 
-    # Default / English (Since most people use English)
     else:
         if user_message in ['hi', 'hello', 'hey', 'hai', 'start']:
             reply_text = random.choice(english_hi).format(name=user_name)
@@ -156,16 +136,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(reply_text, parse_mode="Markdown")
 
 def main():
-    import asyncio
-    loop = asyncio.get_event_loop()
-    loop.create_task(run_web_server())
-
     application = ApplicationBuilder().token(TOKEN).build()
 
     message_handler = MessageHandler((filters.TEXT | filters.PHOTO) & (~filters.COMMAND), handle_message)
     application.add_handler(message_handler)
 
-    print("Multilingual Smart Bot is running smoothly...")
+    print("Smart Multilingual Telegram Bot is running successfully...")
     application.run_polling()
 
 if __name__ == '__main__':
