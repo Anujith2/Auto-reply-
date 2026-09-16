@@ -5,16 +5,17 @@ from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filte
 
 TOKEN = os.getenv("TOKEN")
 
-# 1. വെറുതെ Hi, Hello എന്ന് ആരെങ്കിലും അയക്കുമ്പോൾ ഫ്രണ്ട്ലി ആയി മറുപടി നൽകാൻ (മാറിമാറി വരും)
-hi_hello_responses = [
-    "Hi bro! പ്ലാനുകളെക്കുറിച്ചോ പേയ്മെന്റിനെക്കുറിച്ചോ അറിയാൻ ഉണ്ടെങ്കിൽ ചോദിക്കൂ.",
-    "Hello! എന്താ വിശേഷം? മലയാളം പ്ലാൻ വിവരങ്ങൾ വേണമെന്നുണ്ടെങ്കിൽ പറയാം.",
-    "Hey there! സുഖമാണോ? പ്ലാൻ ഡീറ്റെയിൽസ് നോക്കാൻ പറയൂ.",
-    "Hi sister! എന്താണ് സഹായം വേണ്ടത്? പ്ലാൻസ് നോക്കുന്നുണ്ടോ?",
-    "Hello bro! പ്ലാൻ ഡീറ്റെയിൽസും യുപിഐ ഐഡിയും താഴെ കൊടുക്കാം, വേണമെന്നുണ്ടെങ്കിൽ ചോദിക്കൂ."
-]
+# 1. വെറുതെ Hi, Hello എന്ന് അയക്കുമ്പോൾ ഉപയോക്താവിന്റെ പേര് വെച്ച് ഫ്രണ്ട്ലി ആയി മറുപടി നൽകാൻ
+def get_hi_response(name):
+    responses = [
+        f"Hi {name}! പ്ലാനുകളെക്കുറിച്ചോ പേയ്മെന്റിനെക്കുറിച്ചോ അറിയാൻ ഉണ്ടെങ്കിൽ ചോദിക്കൂ.",
+        f"Hello {name}! എന്താ വിശേഷം? മലയാളം പ്ലാൻ വിവരങ്ങൾ വേണമെന്നുണ്ടെങ്കിൽ പറയാം.",
+        f"Hey {name}! സുഖമാണോ? പ്ലാൻ ഡീറ്റെയിൽസ് നോക്കാൻ പറയൂ.",
+        f"Hi there, {name}! എന്താണ് സഹായം വേണ്ടത്?"
+    ]
+    return random.choice(responses)
 
-# 2. മലയാളം പ്ലാനുകൾ ചോദിക്കുമ്പോൾ (മാറിമാറി വരുന്ന ശൈലി)
+# 2. മലയാളം പ്ലാനുകൾ ചോദിക്കുമ്പോൾ
 malayalam_plan_responses = [
     (
         "❤️ **AVAILABLE PLANS** ❤️\n\n"
@@ -31,7 +32,7 @@ malayalam_plan_responses = [
         "⚠️ പെയ്മെന്റ് അയച്ചതിനു ശേഷം ദയവായി അതിന്റെ **സ്ക്രീൻഷോട്ട്** ഇവിടെ അയക്കുക."
     ),
     (
-        "ഹലോ bro! മലയാളം പ്ലാനിന്റെ വിവരങ്ങൾ ഇതാ:\n\n"
+        "ഹലോ! മലയാളം പ്ലാനിന്റെ വിവരങ്ങൾ ഇതാ:\n\n"
         "• **10Rs** - 1 Day\n"
         "• **40Rs** - 1 Week\n"
         "• **89Rs** - 1 Month\n\n"
@@ -45,7 +46,7 @@ malayalam_plan_responses = [
 # 3. Google Pay മാത്രം ചോദിക്കുമ്പോൾ
 gpay_responses = [
     "✨ **GPay / Google Pay UPI ID** 👇\n\n`kv048471@okicici`\n\n⚠️ പെയ്മെന്റ് ചെയ്ത ശേഷം സ്ക്രീൻഷോട്ട് അയക്കുക.",
-    "ഗൂഗിൾ പേ വഴി ചെയ്യാനാണെങ്കിൽ ഈ യുപിഐ ഐഡി ഉപയോഗിക്കൂ bro 👇\n\n`kv048471@okicici`\n\nപെയ്മെന്റ് കഴിഞ്ഞാൽ സ്ക്രീൻഷോട്ട് ഇവിടെ സെൻഡ് ചെയ്യുക."
+    "ഗൂഗിൾ പേ വഴി ചെയ്യാനാണെങ്കിൽ ഈ യുപിഐ ഐഡി ഉപയോഗിക്കൂ 👇\n\n`kv048471@okicici`\n\nപെയ്മെന്റ് കഴിഞ്ഞാൽ സ്ക്രീൻഷോട്ട് ഇവിടെ സെൻഡ് ചെയ്യുക."
 ]
 
 # 4. PhonePe മാത്രം ചോദിക്കുമ്പോൾ
@@ -69,6 +70,9 @@ payment_checking_responses = [
 ]
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # മെസ്സേജ് അയച്ച ആളുടെ പേര് എടുക്കുന്നു (ലഭിച്ചില്ലെങ്കിൽ 'Friend' എന്ന് എടുക്കും)
+    user_name = update.message.from_user.first_name if update.message.from_user else "Friend"
+
     # ഉപയോക്താവ് ഫോട്ടോയാണ് (സ്ക്രീൻഷോട്ട്) അയച്ചതെങ്കിൽ
     if update.message.photo:
         reply_text = random.choice(payment_checking_responses)
@@ -77,11 +81,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ടെക്സ്റ്റ് മെസ്സേജ് ആണെങ്കിൽ
     user_message = update.message.text.lower() if update.message.text else ""
-    print(f"Received message: {user_message}")
+    print(f"Received message from {user_name}: {user_message}")
     
-    # വെറുതെ Hi അല്ലെങ്കിൽ Hello എന്ന് മാത്രം അയച്ചാൽ
+    # വെറുതെ Hi അല്ലെങ്കിൽ Hello എന്ന് മാത്രം അയച്ചാൽ (പേര് ചേർത്ത് മറുപടി പോകും)
     if user_message in ['hi', 'hello', 'hey', 'hai', 'ഹായ്', 'ഹലോ']:
-        reply_text = random.choice(hi_hello_responses)
+        reply_text = get_hi_response(user_name)
     
     # മറ്റ് ഭാഷകൾ ചോദിച്ചാൽ
     elif any(lang in user_message for lang in ['hindi', 'tamil', 'telugu', 'kannada', 'bangla']):
@@ -111,7 +115,7 @@ def main():
     message_handler = MessageHandler((filters.TEXT | filters.PHOTO) & (~filters.COMMAND), handle_message)
     application.add_handler(message_handler)
 
-    print("Smart Friendly Bot is running on Render...")
+    print("Advanced Personalised Bot is running on Render...")
     application.run_polling()
 
 if __name__ == '__main__':
