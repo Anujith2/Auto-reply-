@@ -1,21 +1,25 @@
 import os
 import random
+from aiohttp import web
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
 TOKEN = os.getenv("TOKEN")
+PORT = int(os.environ.get("PORT", "10000"))
 
-# 1. വെറുതെ Hi, Hello എന്ന് അയക്കുമ്പോൾ ഉപയോക്താവിന്റെ പേര് വെച്ച് ഫ്രണ്ട്ലി ആയി മറുപടി നൽകാൻ
-def get_hi_response(name):
-    responses = [
-        f"Hi {name}! പ്ലാനുകളെക്കുറിച്ചോ പേയ്മെന്റിനെക്കുറിച്ചോ അറിയാൻ ഉണ്ടെങ്കിൽ ചോദിക്കൂ.",
-        f"Hello {name}! എന്താ വിശേഷം? മലയാളം പ്ലാൻ വിവരങ്ങൾ വേണമെന്നുണ്ടെങ്കിൽ പറയാം.",
-        f"Hey {name}! സുഖമാണോ? പ്ലാൻ ഡീറ്റെയിൽസ് നോക്കാൻ പറയൂ.",
-        f"Hi there, {name}! എന്താണ് സഹായം വേണ്ടത്?"
-    ]
-    return random.choice(responses)
+# Dummy web server for Render port binding
+async def handle_web(request):
+    return web.Response(text="Multilingual Bot is running smoothly!")
 
-# 2. മലയാളം പ്ലാനുകൾ ചോദിക്കുമ്പോൾ
+async def run_web_server():
+    app = web.Application()
+    app.router.add_get("/", handle_web)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
+
+# --- 1. MALAYALAM RESPONSES ---
 malayalam_plan_responses = [
     (
         "❤️ **AVAILABLE PLANS** ❤️\n\n"
@@ -43,34 +47,56 @@ malayalam_plan_responses = [
     )
 ]
 
-# 3. Google Pay മാത്രം ചോദിക്കുമ്പോൾ
-gpay_responses = [
-    "✨ **GPay / Google Pay UPI ID** 👇\n\n`kv048471@okicici`\n\n⚠️ പെയ്മെന്റ് ചെയ്ത ശേഷം സ്ക്രീൻഷോട്ട് അയക്കുക.",
-    "ഗൂഗിൾ പേ വഴി ചെയ്യാനാണെങ്കിൽ ഈ യുപിഐ ഐഡി ഉപയോഗിക്കൂ 👇\n\n`kv048471@okicici`\n\nപെയ്മെന്റ് കഴിഞ്ഞാൽ സ്ക്രീൻഷോട്ട് ഇവിടെ സെൻഡ് ചെയ്യുക."
+malayalam_hi = [
+    "ഹലോ {name}! പ്ലാനുകളെക്കുറിച്ചോ പെയ്മെന്റിനെക്കുറിച്ചോ അറിയാൻ ഉണ്ടെങ്കിൽ ചോദിക്കൂ.",
+    "ഹായ് {name}! എന്താ വിശേഷം? മലയാളം പ്ലാൻ വിവരങ്ങൾ വേണമെന്നുണ്ടെങ്കിൽ പറയാം."
 ]
 
-# 4. PhonePe മാത്രം ചോദിക്കുമ്പോൾ
-phonepe_responses = [
-    "✨ **PhonePe UPI ID** 👇\n\n`vijayalakshmik8825@ybl`\n\n⚠️ പെയ്മെന്റ് അയച്ച ശേഷം സ്ക്രീൻഷോട്ട് അയക്കുക.",
-    "ഫോൺ പേ വഴിയാണ് ചെയ്യുന്നതെങ്കിൽ ഈ യുപിഐ ഐഡിയിലേക്ക് അയക്കൂ 👇\n\n`vijayalakshmik8825@ybl`\n\nപെയ്മെന്റ് സ്ക്രീൻഷോട്ട് ഉടൻ അയക്കുമല്ലോ."
+# --- 2. ENGLISH RESPONSES (Default) ---
+english_plan_responses = [
+    (
+        "❤️ **AVAILABLE PLANS** ❤️\n\n"
+        "**Malayalam Plan 👇**\n"
+        "• 10Rs - 1 Day\n"
+        "• 40Rs - 1 Week\n"
+        "• 89Rs - 1 Month\n\n"
+        "🎁 **PREMIUM FEATURES** 🎁\n"
+        "○ No need to verify\n"
+        "○ No need to open link\n"
+        "○ Direct files\n\n"
+        "🔵 **GPay UPI ID:** `kv048471@okicici`\n"
+        "🟣 **PhonePe UPI ID:** `vijayalakshmik8825@ybl`\n\n"
+        "⚠️ Please send the **screenshot** here after completing the payment."
+    )
 ]
 
-# 5. മറ്റ് ഭാഷകളിൽ ചോദിക്കുമ്പോൾ
-other_language_responses = [
-    "Hello! For this language plan, please wait until the owner comes online. They will talk to you directly soon.",
-    "Hi there! Regarding this language, the owner is currently offline. They will reply to you once they are online.",
-    "Hey! For languages other than Malayalam, please wait for the owner to come online. They'll assist you shortly."
+english_hi = [
+    "Hi {name}! If you want to know about our plans or payment details, just let me know.",
+    "Hello {name}! How can I help you today?"
 ]
 
-# 6. പെയ്മെന്റ് സ്ക്രീൻഷോട്ട് (ഫോട്ടോ) അയക്കുമ്പോൾ
+# --- 3. HINDI RESPONSES ---
+hindi_responses = [
+    "नमस्ते {name}! यदि आप प्लान या पेमेंट के बारे में जानना चाहते हैं, तो कृपया बताएं।\n\n🔵 **GPay UPI:** `kv048471@okicici`\n🟣 **PhonePe UPI:** `vijayalakshmik8825@ybl`\n\n⚠️ पेमेंट करने के बाद स्क्रीनशॉट यहाँ भेजें।"
+]
+
+# --- 4. TELUGU RESPONSES ---
+telugu_responses = [
+    "హలో {name}! ప్లాన్స్ లేదా పేమెంట్ వివరాల గురించి తెలుసుకోవాలంటే అడగండి.\n\n🔵 **GPay UPI:** `kv048471@okicici`\n🟣 **PhonePe UPI:** `vijayalakshmik8825@ybl`\n\n⚠️ పేమెంట్ చేసిన తర్వాత స్క్రీన్ షాట్ ఇక్కడ పంపండి."
+]
+
+# --- 5. TAMIL RESPONSES ---
+tamil_responses = [
+    "வணக்கம் {name}! பிளான் அல்லது பேமெண்ட் விவரங்கள் பற்றி அறிய விரும்பினால் கேட்கவும்.\n\n🔵 **GPay UPI:** `kv048471@okicici`\n🟣 **PhonePe UPI:** `vijayalakshmik8825@ybl`\n\n⚠️ பேமெண்ட் செய்த பிறகு ஸ்கிரீன்ஷாட்டை இங்கே அனுப்பவும்."
+]
+
+# --- 6. PAYMENT SCREENSHOT RESPONSES ---
 payment_checking_responses = [
     "⏳ **Payment checking...** സ്ക്രീൻഷോട്ട് കിട്ടിയിട്ടുണ്ട്! പെയ്മെന്റ് ചെക്ക് ചെയ്ത് ഉടൻ പ്രീമിയം ആഡ് ചെയ്തുതരുന്നതാണ്.",
-    "Got your screenshot! 👍 പെയ്മെന്റ് ചെക്ക് ചെയ്തുകൊണ്ടിരിക്കുകയാണ്, കുറച്ചു സമയം കാത്തിരിക്കൂ.",
-    "Thanks for the screenshot! Checking the payment right now... Premium will be added shortly."
+    "⏳ **Payment checking...** Got your screenshot! Verifying your payment, premium will be added soon."
 ]
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # അപ്ഡേറ്റിൽ മെസ്സേജോ യൂസറോ ഇല്ലെങ്കിൽ എറർ വരാതിരിക്കാൻ തടയുന്നു
     if not update.message:
         return
 
@@ -78,52 +104,68 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user and update.message.from_user.first_name:
         user_name = update.message.from_user.first_name
 
-    # ഉപയോക്താവ് ഫോട്ടോയാണ് (സ്ക്രീൻഷോട്ട്) അയച്ചതെങ്കിൽ
+    # If user sends a screenshot (Photo)
     if update.message.photo:
         reply_text = random.choice(payment_checking_responses)
         await update.message.reply_text(reply_text, parse_mode="Markdown")
         return
 
-    # ടെക്സ്റ്റ് മെസ്സേജ് ആണെങ്കിൽ മാത്രം
     if not update.message.text:
         return
 
     user_message = update.message.text.lower()
-    print(f"Received message from {user_name}: {user_message}")
+    print(f"Received message from {user_name} ({user_message})")
+
+    # Language Detection & Matching Logic
     
-    # വെറുതെ Hi അല്ലെങ്കിൽ Hello എന്ന് മാത്രം അയച്ചാൽ
-    if user_message in ['hi', 'hello', 'hey', 'hai', 'ഹായ്', 'ഹലോ']:
-        reply_text = get_hi_response(user_name)
-    
-    # മറ്റ് ഭാഷകൾ ചോദിച്ചാൽ
-    elif any(lang in user_message for lang in ['hindi', 'tamil', 'telugu', 'kannada', 'bangla']):
-        reply_text = random.choice(other_language_responses)
-    
-    # Google Pay മാത്രം ചോദിച്ചാൽ
-    elif 'gpay' in user_message or 'google pay' in user_message or 'kv048471' in user_message:
-        reply_text = random.choice(gpay_responses)
+    # Malayalam Detection (Malayalam script or words)
+    if any(word in user_message for word in ['malayalam', 'പ്ലാൻ', 'എങ്ങനെ', 'വില', 'അയച്ചു', 'രൂപ', 'rs', '10', '40', '89']) or \
+       any(char >= '\u0d00' and char <= '\u0d7f' for char in user_message):
         
-    # PhonePe മാത്രം ചോദിച്ചാൽ
-    elif 'phonepe' in user_message or 'phone pe' in user_message or 'vijayalakshmi' in user_message:
-        reply_text = random.choice(phonepe_responses)
-        
-    # പ്ലാനുകളെക്കുറിച്ചോ മലയാളം സംബന്ധിച്ചോ ചോദിച്ചാൽ
-    elif any(word in user_message for word in ['plan', 'malayalam', 'price', 'details', '10', '40', '89', 'Rs', 'പ്ലാൻ']):
-        reply_text = random.choice(malayalam_plan_responses)
-        
-    # മറ്റെന്തെങ്കിലും സാധാരണ മെസ്സേജുകൾ ആണെങ്കിൽ
+        if user_message in ['hi', 'hello', 'hey', 'hai']:
+            reply_text = random.choice(malayalam_hi).format(name=user_name)
+        else:
+            reply_text = random.choice(malayalam_plan_responses)
+
+    # Hindi Detection
+    elif any(word in user_message for word in ['hindi', 'kaise', 'kya', 'price', 'payment', 'नमस्ते', 'план']) or \
+         any(char >= '\u0900' and char <= '\u097f' for char in user_message):
+        reply_text = random.choice(hindi_responses).format(name=user_name)
+
+    # Telugu Detection
+    elif any(word in user_message for word in ['telugu', 'ela', 'enti', 'namaskaram']) or \
+         any(char >= '\u0c00' and char <= '\u0c7f' for char in user_message):
+        reply_text = random.choice(telugu_responses).format(name=user_name)
+
+    # Tamil Detection
+    elif any(word in user_message for word in ['tamil', 'epdi', 'vanakkam', 'enna']) or \
+         any(char >= '\u0b00' and char <= '\u0b7f' for char in user_message):
+        reply_text = random.choice(tamil_responses).format(name=user_name)
+
+    # Default / English (Since most people use English)
     else:
-        reply_text = random.choice(malayalam_plan_responses)
+        if user_message in ['hi', 'hello', 'hey', 'hai', 'start']:
+            reply_text = random.choice(english_hi).format(name=user_name)
+        elif 'gpay' in user_message or 'google pay' in user_message or 'kv048471' in user_message:
+            reply_text = "✨ **GPay / Google Pay UPI ID** 👇\n\n`kv048471@okicici`\n\n⚠️ Please send the screenshot after payment."
+        elif 'phonepe' in user_message or 'phone pe' in user_message or 'vijayalakshmi' in user_message:
+            reply_text = "✨ **PhonePe UPI ID** 👇\n\n`vijayalakshmik8825@ybl`\n\n⚠️ Please send the screenshot after payment."
+        else:
+            reply_text = random.choice(english_plan_responses)
 
     await update.message.reply_text(reply_text, parse_mode="Markdown")
 
 def main():
+    import asyncio
+    loop = asyncio.get_event_loop()
+    loop.create_task(run_web_server())
+
     application = ApplicationBuilder().token(TOKEN).build()
 
     message_handler = MessageHandler((filters.TEXT | filters.PHOTO) & (~filters.COMMAND), handle_message)
     application.add_handler(message_handler)
 
-    print("Safe and Advanced Bot is running on Render...")
+    print("Multilingual Smart Bot is running smoothly...")
     application.run_polling()
 
 if __name__ == '__main__':
